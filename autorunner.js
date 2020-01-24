@@ -1,49 +1,48 @@
 #!/usr/bin/env node
 /*
- * Accept a file name to watch
+ * Usage: autorunner.js ~/path/to/entry_point.js
  *
- * Check last-modified timestamp for changes in loop
- *
- * On change, execute file
+ * It will run `node entry_point.js` anytime a file is modified in
+ * the entry point's directory
  *
  */
-const fs = require('fs').promises;
+
+const fs = require('fs');
 const {exec} = require('child_process');
 
-const watchFilePath = process.argv[2] || 'main.js';
+const executable = process.argv[2];
+const watchDir = executable.match(/^(.*)\/[^\/]+$/)[1];
 
-let lastMod;
-setInterval(() => {
-  lastModified(watchFilePath)
-    .then(newLastMod => {
-      if(newLastMod !== lastMod){
-        lastMod = newLastMod;
-        run(watchFilePath);
-      }  
-    });
-}, 50);
+let lastModifiedTime;
+
+fs.watch(watchDir, eventType => {
+  if (eventType === 'change') {
+    lastModified(executable)
+      .then(time => {
+        if (time !== lastModifiedTime) {
+          lastModifiedTime = time;
+          exec(`node ${executable}`, (err, stdout, stderr) => {
+            console.log([err, stdout, stderr]
+              .filter(cur => cur)
+              .join('\n\n')
+              .trim()
+            );
+          }); 
+        }
+      }).catch(err => console.log(err));
+  }
+});
 
 function lastModified(filePath){
   return new Promise(resolve => {
     const interval = setInterval(() => {
-      fs.stat(filePath)
+      fs.promises.stat(filePath)
         .then(stats => {
           clearInterval(interval);
           resolve(stats.mtimeMs);
-        });
+        }, err => null);
     }, 10);
   });
 }
-
-function run(filePath){
-  exec(`node ${filePath}`, (err, stdout, stderr) => {
-    console.log([err, stdout, stderr]
-      .filter(cur => cur)
-      .join('\n\n')
-      .trim()
-    );
-  });
-}
-
 
 

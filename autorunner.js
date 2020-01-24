@@ -36,7 +36,7 @@ function lastModified(filePath, callback){
 function run(filePath){
   exec(`node ${filePath}`, (err, stdout, stderr) => {
     console.log([err, stdout, stderr]
-      .filter((cur) => Boolean(cur))
+      .filter(cur => cur)
       .join('\n\n')
       .trim()
     );

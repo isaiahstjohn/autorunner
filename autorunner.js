@@ -7,30 +7,32 @@
  * On change, execute file
  *
  */
-const fs = require('fs');
+const fs = require('fs').promises;
 const {exec} = require('child_process');
 
 const watchFilePath = process.argv[2] || 'main.js';
 
 let lastMod;
 setInterval(() => {
-  lastModified(watchFilePath, (newLastMod) => {
-    if(newLastMod !== lastMod){
-      lastMod = newLastMod;
-      run(watchFilePath);
-    }  
-  });
+  lastModified(watchFilePath)
+    .then(newLastMod => {
+      if(newLastMod !== lastMod){
+        lastMod = newLastMod;
+        run(watchFilePath);
+      }  
+    });
 }, 50);
 
-function lastModified(filePath, callback){
-  const interval = setInterval(() => {
-    fs.stat(filePath, (err, stats) => {
-      if(stats){
-        clearInterval(interval);
-        callback(stats.mtimeMs);
-      }
-    });
-  }, 10);
+function lastModified(filePath){
+  return new Promise(resolve => {
+    const interval = setInterval(() => {
+      fs.stat(filePath)
+        .then(stats => {
+          clearInterval(interval);
+          resolve(stats.mtimeMs);
+        });
+    }, 10);
+  });
 }
 
 function run(filePath){
